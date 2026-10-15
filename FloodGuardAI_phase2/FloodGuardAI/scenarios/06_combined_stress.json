@@ -1,0 +1,15 @@
+{
+  "name": "combined_stress",
+  "description": "Time-varying storm (peak 100 mm/h), drainage 40%, infiltration 70%, high river with inflow.",
+  "terrain_seed": 42,
+  "grid": {"rows": 40, "cols": 40, "cell_size_m": 25},
+  "time": {"dt_s": 30, "duration_min": 300},
+  "rainfall": {"type": "time_varying", "duration_min": 150,
+               "hyetograph": [{"start_min": 0, "mm_h": 20}, {"start_min": 30, "mm_h": 70},
+                              {"start_min": 60, "mm_h": 100}, {"start_min": 90, "mm_h": 40},
+                              {"start_min": 120, "mm_h": 15}]},
+  "initial": {"depth_m": 0.0, "river_depth_m": 0.8},
+  "drainage": {"scale": 0.4},
+  "infiltration": {"scale": 0.7},
+  "boundary": {"type": "open_south", "river_inflow_m3_s": 5}
+}

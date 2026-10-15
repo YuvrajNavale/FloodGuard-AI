@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FloodGuard AI | Flood Intelligence Dashboard</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<style>
+.building-search-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 12px 0;
+}
+.building-search-controls input,
+.building-search-controls select {
+    min-width: 220px;
+    flex: 1 1 260px;
+    padding: 12px 14px;
+    border: 1px solid #d9e2ef;
+    border-radius: 10px;
+    background: #fff;
+    color: #12233f;
+    font: inherit;
+}
+.building-search-controls input:focus,
+.building-search-controls select:focus {
+    outline: 2px solid #3478f6;
+    outline-offset: 1px;
+}
+.status-badge.none { background: #e8edf4; color: #475569; }
+.status-badge.shallow { background: #fff2cc; color: #8a5b00; }
+.status-badge.moderate { background: #ffe2c7; color: #9a4511; }
+.status-badge.deep { background: #ffe0e3; color: #b42332; }
+.status-badge.unknown { background: #e8edf4; color: #475569; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+<aside class="sidebar">
+<div class="brand">
+<div class="brand-icon">🌊</div>
+<div>
+<h2>FloodGuard <span>AI</span></h2>
+<small>Flood intelligence platform</small>
+</div>
+</div>
+<p class="menu-label">WORKSPACE</p>
+<a class="nav-item active" href="#overview">▦ &nbsp; Overview</a>
+<a class="nav-item" href="#impacts">⌂ &nbsp; Infrastructure</a>
+<a class="nav-item" href="#building-analysis">⌂ &nbsp; Building analysis</a>
+<a class="nav-item" href="#roads">⌁ &nbsp; Road network</a>
+<a class="nav-item" href="#neighborhoods">▤ &nbsp; Neighborhoods</a>
+<a class="nav-item" href="#analytics">▥ &nbsp; Analytics</a>
+<a class="nav-item" href="#facilities">✚ &nbsp; Facility impacts</a>
+<div class="sidebar-bottom">
+<div class="status-dot"></div>
+<div>
+<strong>Simulation database</strong>
+<small>Local MySQL connection</small>
+</div>
+</div>
+</aside>
+<main class="main-content">
+<header class="topbar">
+<div>
+<p class="eyebrow">FLOOD RISK ANALYTICS</p>
+<h1>Flood Intelligence Dashboard</h1>
+<p class="subtitle">
+Simulation results and infrastructure impact assessment
+</p>
+</div>
+
+<div class="header-actions">
+    <a href="{{ url_for('download_report') }}"
+       class="download-report-btn">
+        <span>⬇</span> Download PDF Report
+    </a>
+
+    <div class="environment">
+        <span class="live-dot"></span>
+        Research prototype
+    </div>
+</div>
+
+</header>
+{% if error %}
+<div class="alert">
+<strong>Dashboard notice</strong>
+<p>{{ error }}</p>
+</div>
+{% endif %}
+{% if run %}
+<section class="run-banner">
+<div>
+<span class="section-kicker">CURRENT SIMULATION</span>
+<h2>Run #{{ run.run_id }} · {{ run.depth_basis|upper }} FLOOD REPORT</h2>
+<p>Results retrieved from the FloodGuard AI database.</p>
+</div>
+<span class="run-status">{{ run.status|upper }}</span>
+</section>
+<!-- Main metrics -->
+<section id="overview" class="metrics-grid">
+<article class="metric-card">
+<div class="metric-heading">
+<span>Maximum flood depth</span>
+<span class="metric-icon blue">≈</span>
+</div>
+<div class="metric-value">
+{{ "%.2f"|format(run.max_depth_m or 0) }} <small>m</small>
+</div>
+<p class="metric-note">Maximum recorded simulation depth</p>
+</article>
+<article class="metric-card">
+<div class="metric-heading">
+<span>Inundated area</span>
+<span class="metric-icon cyan">▧</span>
+</div>
+<div class="metric-value">
+{{ "{:,.0f}".format(run.inundated_area_m2 or 0) }}
+<small>m²</small>
+</div>
+<p class="metric-note">Area marked as inundated</p>
+</article>
+<article class="metric-card">
+<div class="metric-heading">
+<span>Inundated area percentage</span>
+<span class="metric-icon purple">%</span>
+</div>
+<div class="metric-value">
+{{ "%.2f"|format(run.inundated_pct or 0) }}<small>%</small>
+</div>
+<div class="progress-track">
+<div class="progress-fill"
+style="width: {{ [[run.inundated_pct or 0, 0]|max, 100]|min }}%">
+</div>
+</div>
+</article>
+<article class="metric-card">
+<div class="metric-heading">
+<span>Exposed buildings</span>
+<span class="metric-icon orange">⌂</span>
+</div>
+<div class="metric-value">
+{{ counts.get('exposed_buildings', 0) }}
+</div>
+<p class="metric-note">Buildings with a positive exposure score</p>
+</article>
+</section>
+<!-- Infrastructure overview -->
+<section id="impacts" class="section-block">
+<div class="section-heading">
+<div>
+<h2>Infrastructure Overview</h2>
+<p>Infrastructure records available in the database</p>
+</div>
+</div>
+<div class="summary-grid">
+<article class="summary-card">
+<span class="summary-icon">⌂</span>
+<div>
+<p>Total buildings</p>
+<strong>{{ counts.get('buildings', 0) }}</strong>
+</div>
+</article>
+<article class="summary-card">
+<span class="summary-icon">⌁</span>
+<div>
+<p>Road segments and bridges</p>
+<strong>{{ counts.get('road_segments', 0) }}</strong>
+</div>
+</article>
+<article class="summary-card">
+<span class="summary-icon">✚</span>
+<div>
+<p>Facilities</p>
+<strong>{{ counts.get('facilities', 0) }}</strong>
+</div>
+</article>
+<article class="summary-card">
+<span class="summary-icon">▤</span>
+<div>
+<p>Neighborhoods</p>
+<strong>{{ counts.get('neighborhoods', 0) }}</strong>
+</div>
+</article>
+</div>
+</section>
+<!-- Road network table -->
+<section id="roads" class="section-block">
+<div class="section-heading">
+<div>
+<h2>Road Network Status</h2>
+<p>Flood impact classification by road type</p>
+</div>
+</div>
+<div class="table-card">
+<table>
+<thead>
+<tr>
+<th>Infrastructure type</th>
+<th>Status</th>
+<th>Segment count</th>
+</tr>
+</thead>
+<tbody>
+{% for road in roads %}
+<tr>
+<td>{{ road.segment_type|title }}</td>
+<td>
+<span class="status-badge {{ road.status|lower|replace(' ', '-') }}">
+{{ road.status|title }}
+</span>
+</td>
+<td>{{ road.total }}</td>
+</tr>
+{% else %}
+<tr>
+<td colspan="3">No road impact records found for this run.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</section>
+<!-- Building impact analysis -->
+<section id="building-analysis" class="section-block">
+<div class="section-heading">
+<div>
+<h2>Building Impact Analysis</h2>
+<p>Flood depth distribution and individual building records</p>
+</div>
+</div>
+<div class="charts-grid building-charts">
+<article class="chart-card">
+<h3>Buildings by Impact Category</h3>
+<p class="chart-description">
+Official impact categories from the current simulation report
+</p>
+<div class="chart-container">
+<canvas id="buildingImpactChart"></canvas>
+</div>
+</article>
+<article class="chart-card">
+<h3>Building Summary</h3>
+<p class="chart-description">Current simulation records</p>
+<div class="building-summary">
+<div class="building-stat">
+<span class="building-stat-label">Total Buildings</span>
+<strong>{{ counts.get('buildings', 0) }}</strong>
+</div>
+<div class="building-stat">
+<span class="building-stat-label">Exposed Buildings</span>
+<strong>{{ counts.get('exposed_buildings', 0) }}</strong>
+</div>
+<div class="building-stat">
+<span class="building-stat-label">Impact Categories</span>
+<strong>{{ building_categories|length }}</strong>
+</div>
+</div>
+</article>
+</div>
+<div class="section-heading building-table-heading">
+<div>
+<h2>Individual Building Records</h2>
+<p>Search by building ID, type, or neighborhood</p>
+</div>
+</div>
+<div class="building-search-controls">
+<input
+type="search"
+id="buildingSearch"
+placeholder="Search building ID, type, or neighborhood..."
+aria-label="Search building records">
+<select id="buildingCategoryFilter" aria-label="Filter by flood impact category">
+<option value="">All impact categories</option>
+<option value="None">None</option>
+<option value="Shallow">Shallow</option>
+<option value="Moderate">Moderate</option>
+<option value="Deep">Deep</option>
+<option value="Unknown">Unknown</option>
+</select>
+</div>
+<div class="table-card">
+<table id="buildingTable">
+<thead>
+<tr>
+<th>Building ID</th>
+<th>Building type</th>
+<th>Impact category</th>
+<th>Neighborhood</th>
+<th>Flood depth</th>
+<th>Exposure score</th>
+<th>Road accessible</th>
+</tr>
+</thead>
+<tbody>
+{% for building in building_details %}
+<tr data-impact-category="{{ building.impact_category or 'Unknown' }}">
+<td>{{ building.building_id }}</td>
+<td>{{ building.building_type }}</td>
+<td><span class="status-badge {{ (building.impact_category or 'Unknown')|lower }}">{{ building.impact_category or 'Unknown' }}</span></td>
+<td>{{ building.neighborhood_name or 'Unassigned' }}</td>
+<td>{{ "%.3f"|format(building.max_depth_m or 0) }} m</td>
+<td>{{ "%.2f"|format(building.exposure_score or 0) }}</td>
+<td>
+{% if building.road_accessible %}
+<span class="status-badge open">Yes</span>
+{% else %}
+<span class="status-badge closed">No</span>
+{% endif %}
+</td>
+</tr>
+{% else %}
+<tr>
+<td colspan="7">No building records are available.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+<p id="buildingSearchMessage" class="search-message"></p>
+</div>
+</section>
+<!-- Neighborhood risk -->
+<section id="neighborhoods" class="section-block">
+<div class="section-heading">
+<div>
+<h2>Neighborhood Flood Risk</h2>
+<p>Ranked by exposed buildings and maximum recorded depth</p>
+</div>
+</div>
+<div class="table-card">
+<table>
+<thead>
+<tr>
+<th>Neighborhood</th>
+<th>Buildings</th>
+<th>Exposed buildings</th>
+<th>Maximum depth</th>
+</tr>
+</thead>
+<tbody>
+{% for area in neighborhoods %}
+<tr>
+<td>{{ area.neighborhood_name }}</td>
+<td>{{ area.building_count }}</td>
+<td>
+<span class="risk-count">
+{{ area.exposed_buildings or 0 }}
+</span>
+</td>
+<td>{{ "%.3f"|format(area.max_depth_m or 0) }} m</td>
+</tr>
+{% else %}
+<tr>
+<td colspan="4">No neighborhood data found.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</section>
+{% else %}
+<section class="empty-state">
+<h2>Simulation results are not available</h2>
+<p>Check the MySQL connection and confirm that a completed simulation run exists.</p>
+</section>
+{% endif %}
+<!-- Interactive charts -->
+<section class="section-block" id="analytics">
+<div class="section-heading">
+<div>
+<h2>Flood Impact Analytics</h2>
+<p>Visual analysis of road accessibility and neighborhood exposure</p>
+</div>
+</div>
+<div class="charts-grid">
+<article class="chart-card">
+<h3>Road & Bridge Status</h3>
+<p class="chart-description">
+Distribution of open, reduced-access, and closed infrastructure
+</p>
+<div class="chart-container">
+<canvas id="roadChart"></canvas>
+</div>
+</article>
+<article class="chart-card">
+<h3>Neighborhood Exposure</h3>
+<p class="chart-description">
+Buildings with positive exposure scores by neighborhood
+</p>
+<div class="chart-container">
+<canvas id="neighborhoodChart"></canvas>
+</div>
+</article>
+</div>
+</section>
+<!-- Facility impact table -->
+<section id="facilities" class="section-block">
+<div class="section-heading">
+<div>
+<h2>Facility Impact Analysis</h2>
+<p>Flood exposure and accessibility from the simulation report</p>
+</div>
+</div>
+{% if facility_error %}
+<div class="alert">
+<strong>Facility data unavailable</strong>
+<p>{{ facility_error }}</p>
+</div>
+{% else %}
+<div class="table-card">
+<table>
+<thead>
+<tr>
+<th>Facility</th>
+<th>Type</th>
+<th>Flood depth</th>
+<th>Exposure</th>
+<th>Local access</th>
+<th>Dispatch reachability</th>
+</tr>
+</thead>
+<tbody>
+{% for facility in facilities %}
+<tr>
+<td>{{ facility.get('name', 'Unknown') }}</td>
+<td>{{ facility.get('type', 'Unknown')|title }}</td>
+<td>
+{{ "%.3f"|format(facility.get('depth_m', 0) or 0) }} m
+</td>
+<td>
+{% if facility.get('exposed') %}
+<span class="status-badge closed">Exposed</span>
+{% else %}
+<span class="status-badge open">Not exposed</span>
+{% endif %}
+</td>
+<td>
+{{ facility.get('local_access', 'Unknown')|string|title }}
+</td>
+<td>
+{{ facility.get('reachable_from_dispatch', 'Unknown')|string|title }}
+</td>
+</tr>
+{% else %}
+<tr>
+<td colspan="6">No facility records found in the report.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endif %}
+</section>
+<footer>
+<p>FloodGuard AI · Academic research prototype · Synthetic simulation data</p>
+<p>Not intended for operational flood warnings or emergency decisions.</p>
+</footer>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+const roadCanvas = document.getElementById("roadChart");
+const neighborhoodCanvas = document.getElementById("neighborhoodChart");
+const buildingCanvas = document.getElementById("buildingImpactChart");
+fetch("/api/dashboard")
+.then(response => {
+if (!response.ok) {
+throw new Error("Dashboard API returned HTTP " + response.status);
+}
+return response.json();
+})
+.then(data => {
+if (data.error) {
+console.error("Dashboard API error:", data.error);
+return;
+}
+// Road and bridge status chart
+const statusTotals = {};
+(data.roads || []).forEach(item => {
+const status = String(item.status || "unknown").toLowerCase();
+statusTotals[status] =
+(statusTotals[status] || 0) + Number(item.total || 0);
+});
+if (roadCanvas) {
+new Chart(roadCanvas, {
+type: "doughnut",
+data: {
+labels: Object.keys(statusTotals).map(
+status => status.charAt(0).toUpperCase() + status.slice(1)
+),
+datasets: [{
+data: Object.values(statusTotals),
+backgroundColor: ["#21b889", "#f2b544", "#e85c65"],
+borderWidth: 0,
+hoverOffset: 7
+}]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+plugins: {
+legend: { position: "bottom" }
+}
+}
+});
+}
+// Neighborhood exposure chart
+const areas = [...(data.neighborhoods || [])]
+.sort((a, b) =>
+Number(b.exposed_buildings || 0) -
+Number(a.exposed_buildings || 0)
+)
+.slice(0, 10)
+.reverse();
+if (neighborhoodCanvas) {
+new Chart(neighborhoodCanvas, {
+type: "bar",
+data: {
+labels: areas.map(area => area.neighborhood_name),
+datasets: [{
+label: "Exposed buildings",
+data: areas.map(
+area => Number(area.exposed_buildings || 0)
+),
+backgroundColor: "#3478f6",
+borderRadius: 5
+}]
+},
+options: {
+indexAxis: "y",
+responsive: true,
+maintainAspectRatio: false,
+scales: {
+x: {
+beginAtZero: true,
+ticks: { precision: 0 }
+}
+},
+plugins: {
+legend: { display: false }
+}
+}
+});
+}
+// Building impact category chart
+const categories = data.building_categories || [];
+if (buildingCanvas) {
+new Chart(buildingCanvas, {
+type: "bar",
+data: {
+labels: categories.map(item => item.impact_category),
+datasets: [{
+label: "Buildings",
+data: categories.map(item => Number(item.total || 0)),
+backgroundColor: [
+"#21b889",
+"#f2b544",
+"#ef9148",
+"#e85c65"
+],
+borderRadius: 6
+}]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+scales: {
+y: {
+beginAtZero: true,
+ticks: { precision: 0 }
+}
+},
+plugins: {
+legend: { display: false }
+}
+}
+});
+}
+})
+.catch(error => {
+console.error("Chart loading error:", error);
+});
+// Search and filter the individual building table
+const searchInput = document.getElementById("buildingSearch");
+const categoryFilter = document.getElementById("buildingCategoryFilter");
+const buildingTable = document.getElementById("buildingTable");
+const searchMessage = document.getElementById("buildingSearchMessage");
+
+if (searchInput && categoryFilter && buildingTable && searchMessage) {
+    const rows = Array.from(buildingTable.querySelectorAll("tbody tr"));
+
+    function filterBuildings() {
+        const query = searchInput.value.trim().toLowerCase();
+        const selectedCategory = categoryFilter.value.toLowerCase();
+        let visible = 0;
+
+        rows.forEach(row => {
+            const isDataRow = row.cells.length > 1;
+            const textMatches = row.textContent.toLowerCase().includes(query);
+            const rowCategory = (row.dataset.impactCategory || "Unknown").toLowerCase();
+            const categoryMatches = !selectedCategory || rowCategory === selectedCategory;
+            const matches = isDataRow && textMatches && categoryMatches;
+
+            row.style.display = matches ? "" : "none";
+            if (matches) visible++;
+        });
+
+        searchMessage.textContent = visible + (visible === 1 ? " matching building record" : " matching building records");
+    }
+
+    searchInput.addEventListener("input", filterBuildings);
+    categoryFilter.addEventListener("change", filterBuildings);
+    filterBuildings();
+}
+});
+</script>
+</body>
+</html>

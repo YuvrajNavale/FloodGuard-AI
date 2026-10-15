@@ -1,0 +1,13 @@
+{
+  "name": "localized_intense_rainfall",
+  "description": "Gaussian storm cell, 90 mm/h at centre (row 26, col 24), 20% of peak far away, 90 min.",
+  "terrain_seed": 42,
+  "grid": {"rows": 40, "cols": 40, "cell_size_m": 25},
+  "time": {"dt_s": 30, "duration_min": 240},
+  "rainfall": {"type": "localized", "intensity_mm_h": 90, "duration_min": 90,
+               "storm_row": 26, "storm_col": 24, "storm_radius_cells": 5, "background_fraction": 0.2},
+  "initial": {"depth_m": 0.0, "river_depth_m": 0.3},
+  "drainage": {"scale": 1.0},
+  "infiltration": {"scale": 1.0},
+  "boundary": {"type": "open_south", "river_inflow_m3_s": 0}
+}

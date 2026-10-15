@@ -1,0 +1,12 @@
+{
+  "name": "heavy_rainfall",
+  "description": "Constant 60 mm/h for 120 min (120 mm total), default drainage.",
+  "terrain_seed": 42,
+  "grid": {"rows": 40, "cols": 40, "cell_size_m": 25},
+  "time": {"dt_s": 30, "duration_min": 300},
+  "rainfall": {"type": "constant", "intensity_mm_h": 60, "duration_min": 120},
+  "initial": {"depth_m": 0.0, "river_depth_m": 0.3},
+  "drainage": {"scale": 1.0},
+  "infiltration": {"scale": 1.0},
+  "boundary": {"type": "open_south", "river_inflow_m3_s": 0}
+}

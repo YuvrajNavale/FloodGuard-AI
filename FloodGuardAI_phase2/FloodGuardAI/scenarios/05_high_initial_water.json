@@ -1,0 +1,12 @@
+{
+  "name": "high_initial_water",
+  "description": "30 mm/h for 120 min on saturated ground: 2 cm film everywhere, high river (1.0 m) and 8 m3/s upstream inflow.",
+  "terrain_seed": 42,
+  "grid": {"rows": 40, "cols": 40, "cell_size_m": 25},
+  "time": {"dt_s": 30, "duration_min": 300},
+  "rainfall": {"type": "constant", "intensity_mm_h": 30, "duration_min": 120},
+  "initial": {"depth_m": 0.02, "river_depth_m": 1.0},
+  "drainage": {"scale": 1.0},
+  "infiltration": {"scale": 1.0},
+  "boundary": {"type": "open_south", "river_inflow_m3_s": 8}
+}
